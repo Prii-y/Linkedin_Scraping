@@ -37,7 +37,7 @@ colocados <- read.xlsx("colocados_2014.xlsx") %>%
              filter(merge==1)
 
   
-profiles <- read_csv("profiles_2014.csv")                     %>%
+profiles <- read_csv("profiles2_2014.csv")                     %>%
   rename_with(~ str_replace(., "_company_name$", "_companyname"), 
               ends_with("_company_name"))                     %>%
   rename_with(~ str_replace(., "_end_date$", "_enddate"), 
@@ -68,7 +68,14 @@ data_edu <- profiles %>%
   group_by(username) %>%
   mutate(total_missing_all_educ = sum(missing_all_educ, na.rm = TRUE)) %>% #Number of entries with missing  
   ungroup() %>%
-  filter(missing_all_educ!=1)
+  filter(missing_all_educ!=1) %>%
+  mutate(
+    enddate_month = ifelse(grepl("-", enddate), sub("-(.*)", "", enddate), NA), # Get the left part
+    enddate = ifelse(grepl("-", enddate), paste0("20", sub(".*-(\\d{2})", "\\1", enddate)), enddate), # Replace and create new year
+    startdate_month = ifelse(grepl("-", startdate), sub("-(.*)", "", startdate), NA), # Get the left part
+    startdate = ifelse(grepl("-", startdate), paste0("20", sub(".*-(\\d{2})", "\\1", startdate)), startdate)
+    )
+  
 
 dup_data_edu <- duplicates(data_edu,c("username","degree","enddate","institution","startdate"))
 
@@ -81,9 +88,17 @@ data_exp <- profiles %>%
   group_by(username) %>%
   mutate(total_missing_all_exp = sum(missing_all_exp, na.rm = TRUE)) %>% #Number of entries with missing  
   ungroup() %>%
-  filter(missing_all_exp!=1) 
+  filter(missing_all_exp!=1) %>%
+  mutate(
+    enddate_month = ifelse(grepl("-", enddate), sub("-(.*)", "", enddate), NA), # Get the left part
+    enddate = ifelse(grepl("-", enddate), paste0("20", sub(".*-(\\d{2})", "\\1", enddate)), enddate), # Replace and create new year
+    startdate_month = ifelse(grepl("-", startdate), sub("-(.*)", "", startdate), NA), # Get the left part
+    startdate = ifelse(grepl("-", startdate), paste0("20", sub(".*-(\\d{2})", "\\1", startdate)), startdate)
+  ) %>%
+  mutate(companyname = str_replace(companyname, " ·", ""))
 
-dup_data_exp <- duplicates(data_exp,c("username","title","enddate","companyname","startdate","location"))
+
+dup_data_exp <- duplicates(data_exp,c("username","title","enddate","companyname","startdate","location","enddate_month","startdate_month"))
 
 profiles_scraped <- profiles %>% ungroup() %>% distinct(username) %>% mutate(scraped=1)
 
@@ -91,4 +106,3 @@ no_matches <- matches %>%
   left_join(profiles_scraped, by="username") %>% 
   filter(is.na(scraped))
 
-tabulate(matches,"scraped")
